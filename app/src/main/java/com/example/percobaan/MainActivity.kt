@@ -6,20 +6,17 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
-import com.example.percobaan.model.Video
 import com.example.percobaan.model.VideoSource
 
 class MainActivity : ComponentActivity() {
@@ -27,30 +24,52 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
+
+            var tab by remember { mutableStateOf(0) }
             val navController = rememberNavController()
 
             Scaffold(
-                bottomBar = { BottomBar() }
-            ) { paddingValues ->
-
-                NavHost(
-                    navController = navController,
-                    startDestination = "home",
-                    modifier = Modifier.padding(paddingValues)
-                ) {
-
-                    composable("home") {
-                        HomeScreen(navController)
-                    }
-
-                    composable("detail/{title}/{channel}/{views}/{image}") { backStack ->
-                        DetailScreen(
-                            title = backStack.arguments?.getString("title") ?: "",
-                            channel = backStack.arguments?.getString("channel") ?: "",
-                            views = backStack.arguments?.getString("views") ?: "",
-                            image = backStack.arguments?.getString("image")?.toInt() ?: 0
+                bottomBar = {
+                    NavigationBar {
+                        NavigationBarItem(
+                            selected = tab == 0,
+                            onClick = { tab = 0 },
+                            icon = { Icon(Icons.Default.Home, null) },
+                            label = { Text("Beranda") }
+                        )
+                        NavigationBarItem(
+                            selected = tab == 1,
+                            onClick = { tab = 1 },
+                            icon = { Icon(Icons.Default.List, null) },
+                            label = { Text("Koleksi") }
                         )
                     }
+                }
+            ) { padding ->
+
+                if (tab == 0) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "home",
+                        modifier = Modifier.padding(padding)
+                    ) {
+
+                        composable("home") {
+                            HomeScreen(navController)
+                        }
+
+                        composable("detail/{title}/{channel}/{views}/{image}") { it ->
+                            DetailScreen(
+                                title = it.arguments?.getString("title") ?: "",
+                                channel = it.arguments?.getString("channel") ?: "",
+                                views = it.arguments?.getString("views") ?: "",
+                                image = it.arguments?.getString("image")?.toInt() ?: 0,
+                                navController = navController
+                            )
+                        }
+                    }
+                } else {
+                    CollectionScreen()
                 }
             }
         }
@@ -60,124 +79,194 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeScreen(navController: NavController) {
 
-    LazyColumn(modifier = Modifier.padding(16.dp)) {
+    LazyColumn {
 
         item {
-            ProfileSection()
-            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "YouTAM",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
+            )
         }
 
         items(VideoSource.videos) { video ->
-            VideoItem(video) {
-                navController.navigate(
-                    "detail/${video.title}/${video.channelName}/${video.views}/${video.imageRes}"
+
+            Column(
+                modifier = Modifier.clickable {
+                    navController.navigate(
+                        "detail/${video.title}/${video.channelName}/${video.views}/${video.imageRes}"
+                    )
+                }
+            ) {
+
+                Image(
+                    painter = painterResource(video.imageRes),
+                    contentDescription = "",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
                 )
+
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(video.title)
+                    Text("${video.channelName} • ${video.views}")
+                }
             }
         }
     }
 }
 
 @Composable
-fun ProfileSection() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-
-        Image(
-            painter = painterResource(id = R.drawable.profile),
-            contentDescription = "",
-            modifier = Modifier.size(50.dp)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Column {
-            Text("Zulfa Riana", style = MaterialTheme.typography.titleMedium)
-            Text("@zulfacantik", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-fun VideoItem(video: Video, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp)
-            .clickable { onClick() }
-    ) {
-
-        Image(
-            painter = painterResource(id = video.imageRes),
-            contentDescription = "",
-            modifier = Modifier.size(100.dp)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Column {
-            Text(video.title)
-            Text(video.channelName)
-            Text(video.views)
-        }
-    }
-}
-
-@Composable
-fun DetailScreen(title: String, channel: String, views: String, image: Int) {
+fun DetailScreen(
+    title: String,
+    channel: String,
+    views: String,
+    image: Int,
+    navController: NavController
+) {
 
     var liked by remember { mutableStateOf(false) }
     var subscribed by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column {
 
-        Image(
-            painter = painterResource(id = image),
-            contentDescription = "",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-        )
+        Box {
+            Image(
+                painter = painterResource(image),
+                contentDescription = "",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+            )
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(views)
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row {
-            Button(onClick = { liked = !liked }) {
-                Text(if (liked) "Liked ❤️" else "Like 👍")
-            }
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Button(onClick = { subscribed = !subscribed }) {
-                Text(if (subscribed) "Subscribed 🔔" else "Subscribe")
-            }
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "",
+                modifier = Modifier
+                    .padding(16.dp)
+                    .clickable { navController.popBackStack() }
+            )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
 
-        Text(channel)
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(views)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceAround,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { liked = !liked }
+                ) {
+                    Icon(Icons.Default.ThumbUp, "")
+                    Text(if (liked) "Liked ❤️" else "Suka")
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Share, "")
+                    Text("Bagikan")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+
+                Image(
+                    painter = painterResource(R.drawable.profile),
+                    contentDescription = "",
+                    modifier = Modifier.size(40.dp)
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(channel)
+                    Text("1.5M Subscriber")
+                }
+
+                Button(onClick = { subscribed = !subscribed }) {
+                    Text(if (subscribed) "Subscribed 🔔" else "Subscribe")
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun BottomBar() {
-    NavigationBar {
+fun CollectionScreen() {
 
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "") },
-            label = { Text("Beranda") },
-            selected = true,
-            onClick = {}
-        )
+    LazyColumn(modifier = Modifier.padding(16.dp)) {
 
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.List, contentDescription = "") },
-            label = { Text("Koleksi") },
-            selected = false,
-            onClick = {}
-        )
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+
+                Image(
+                    painter = painterResource(R.drawable.profile),
+                    contentDescription = "",
+                    modifier = Modifier.size(50.dp)
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column {
+                    Text("Zulfa Riana")
+                    Text("@zulfacantik", color = androidx.compose.ui.graphics.Color.Gray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Riwayat")
+        }
+
+        item {
+            Row {
+
+                Image(
+                    painter = painterResource(R.drawable.mamank),
+                    contentDescription = "",
+                    modifier = Modifier.size(120.dp)
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Image(
+                    painter = painterResource(R.drawable.wasa),
+                    contentDescription = "",
+                    modifier = Modifier.size(120.dp)
+                )
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Daftar Putar (Playlist)")
+        }
+
+        items(5) {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp)
+            ) {
+                Icon(Icons.Default.List, "")
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column {
+                    Text("Playlist Kuliah ${it + 1}")
+                    Text("${(it + 1) * 3} video")
+                }
+            }
+        }
     }
 }
